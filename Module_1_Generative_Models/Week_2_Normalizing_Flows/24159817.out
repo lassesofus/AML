@@ -1,0 +1,67 @@
+# Options
+batch_size = 1000
+device = cuda
+epochs = 1000
+lr = 0.001
+masking = cb
+mode = train
+model = model.pt
+samples = samples_mnist.png
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 24159817: <flow_mnist> in cluster <dcc> Exited
+
+Job <flow_mnist> was submitted from host <n-62-12-19> by user <s185927> in cluster <dcc> at Fri Feb 21 16:05:46 2025
+Job was executed on host(s) <4*n-62-20-16>, in queue <gpuv100>, as user <s185927> in cluster <dcc> at Fri Feb 21 16:05:48 2025
+</zhome/e3/3/139772> was used as the home directory.
+</zhome/e3/3/139772/Desktop/AML/AML/Module_1_Generative_Models/Week_2_Normalizing_Flows> was used as the working directory.
+Started at Fri Feb 21 16:05:48 2025
+Terminated at Fri Feb 21 16:12:03 2025
+Results reported at Fri Feb 21 16:12:03 2025
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+#!/bin/bash
+#BSUB -J flow_mnist
+#BSUB -q gpuv100
+#BSUB -n 4
+#BSUB -gpu "num=1:mode=exclusive_process"
+#BSUB -W 5:00
+#BSUB -R "select[gpu32gb]"
+#BSUB -u lassesofus@gmail.com
+#BSUB -o %J.out
+#BSUB -e %J.err
+
+source /zhome/e3/3/139772/Desktop/AML/aml/bin/activate
+
+python3 /zhome/e3/3/139772/Desktop/AML/AML/Module_1_Generative_Models/Week_2_Normalizing_Flows/flow_2_5.py train --masking cb --epochs 1000 --device cuda
+
+------------------------------------------------------------
+
+TERM_OWNER: job killed by owner.
+Exited with exit code 130.
+
+Resource usage summary:
+
+    CPU time :                                   353.00 sec.
+    Max Memory :                                 618 MB
+    Average Memory :                             528.20 MB
+    Total Requested Memory :                     4096.00 MB
+    Delta Memory :                               3478.00 MB
+    Max Swap :                                   -
+    Max Processes :                              4
+    Max Threads :                                11
+    Run time :                                   464 sec.
+    Turnaround time :                            377 sec.
+
+The output (if any) is above this job summary.
+
+
+
+PS:
+
+Read file <24159817.err> for stderr output of this job.
+

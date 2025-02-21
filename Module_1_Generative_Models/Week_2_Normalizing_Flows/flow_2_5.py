@@ -261,8 +261,8 @@ if __name__ == "__main__":
 
     # Define transformations
     transformations = []
-    num_transformations = 5
-    num_hidden = 8
+    num_transformations = 16
+    num_hidden = 400
 
     # Define NN'ss
     scale_net = nn.Sequential(
@@ -314,8 +314,8 @@ if __name__ == "__main__":
         # Generate samples
         model.eval()
         with torch.no_grad():
-            samples = model.sample((16,)).cpu()  # Generate 16 samples
+            samples = model.sample((100,)).cpu()  # Generate 16 samples
 
         # Reshape samples to 28x28 and save as images
         samples = samples.view(-1, 1, 28, 28)
-        save_image(samples, args.samples, nrow=4)
+        save_image(samples, args.samples, nrow=10)
