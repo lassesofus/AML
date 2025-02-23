@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.distributions as td
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 class GaussianBase(nn.Module):
     def __init__(self, D):
@@ -186,7 +187,7 @@ class Flow(nn.Module):
         return -torch.mean(self.log_prob(x))
 
 
-def train(model, optimizer, data_loader, epochs, device):
+def train(model, optimizer, data_loader, epochs, device, output_dir):
     """
     Train a Flow model.
 
@@ -207,6 +208,8 @@ def train(model, optimizer, data_loader, epochs, device):
     total_steps = len(data_loader)*epochs
     progress_bar = tqdm(range(total_steps), desc="Training")
 
+    loss_values = []  # List to store loss values
+
     for epoch in range(epochs):
         data_iter = iter(data_loader)
         for batch in data_iter:
@@ -217,9 +220,26 @@ def train(model, optimizer, data_loader, epochs, device):
             loss.backward()
             optimizer.step()
 
+            # Store the loss value
+            loss_values.append(loss.item())
+
             # Update progress bar
             progress_bar.set_postfix(loss=f"{loss.item():12.4f}", epoch=f"{epoch+1}/{epochs}")
             progress_bar.update()
+
+    # Plot the loss curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(loss_values, label='Training Loss', color='b', linewidth=2)
+    plt.xlabel('Step', fontsize=14)
+    plt.ylabel('Loss', fontsize=14)
+    plt.title('Training Loss Curve', fontsize=16)
+    plt.grid(True)
+    plt.legend(fontsize=12)
+    if output_dir != '':
+        plt.savefig(f'{output_dir}/loss_curve.png')  # Save the figure as a file
+    else:
+        plt.savefig('loss_curve.png')  # Save the figure as a file
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -227,6 +247,14 @@ if __name__ == "__main__":
     from torchvision import datasets, transforms
     from torchvision.utils import save_image
     import ToyData
+    import numpy as np
+
+    # Set the random seeds
+    torch.manual_seed(0)
+    np.random.seed(0)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     # Parse arguments
     import argparse
@@ -237,8 +265,11 @@ if __name__ == "__main__":
     parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda', 'mps'], help='torch device (default: %(default)s)')
     parser.add_argument('--batch-size', type=int, default=1000, metavar='N', help='batch size for training (default: %(default)s)')
     parser.add_argument('--epochs', type=int, default=1, metavar='N', help='number of epochs to train (default: %(default)s)')
-    parser.add_argument('--lr', type=float, default=1e-3, metavar='V', help='learning rate for training (default: %(default)s)')
+    parser.add_argument('--lr', type=float, default=1e-4, metavar='V', help='learning rate for training (default: %(default)s)')
     parser.add_argument('--masking', type=str, default='cb', choices=['random', 'cb'], help='masking strategy to use (default: %(default)s)')
+    parser.add_argument('--num_hidden', type=int, default=200, metavar='N', help='number of hidden units in the translation and scale NNs (default: %(default)s)')
+    parser.add_argument('--num_transformations', type=int, default=8, metavar='N', help='number of transformations in the flow (default: %(default)s)')
+    parser.add_argument('--output_dir', type=str, default='', help='path to output loss curve etc. (default: %(default)s)')
 
 
     args = parser.parse_args()
@@ -255,25 +286,34 @@ if __name__ == "__main__":
     train_dataset = datasets.MNIST('data/', train=True, download=True, transform=transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
 
+    # Save a grid of training images
+    images, _ = next(iter(train_loader))
+    images = images.view(-1, 1, 28, 28)  # Reshape to (batch_size, 1, 28, 28)
+    save_image(images[:100], 'training_images_grid.png', nrow=10)  # Save the first 100 images in a 10x10 grid
+
     # Define prior distribution
     D = 28**2
     base = GaussianBase(D)
 
     # Define transformations
     transformations = []
-    num_transformations = 16
-    num_hidden = 400
+    num_transformations = args.num_transformations
+    num_hidden = args.num_hidden
 
     # Define NN'ss
     scale_net = nn.Sequential(
         nn.Linear(D, num_hidden),
-        nn.ReLU(),
+        nn.LeakyReLU(),
+        nn.Linear(num_hidden, num_hidden),
+        nn.LeakyReLU(),
         nn.Linear(num_hidden, D),
         nn.Tanh()  # Add tanh activation for stability
     )
     translation_net = nn.Sequential(
         nn.Linear(D, num_hidden),
-        nn.ReLU(),
+        nn.LeakyReLU(),
+        nn.Linear(num_hidden, num_hidden),
+        nn.LeakyReLU(),
         nn.Linear(num_hidden, D)
     )
 
@@ -300,7 +340,7 @@ if __name__ == "__main__":
         optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
         # Train model
-        train(model, optimizer, train_loader, args.epochs, args.device)
+        train(model, optimizer, train_loader, args.epochs, args.device, args.output_dir)
 
         # Save model
         torch.save(model.state_dict(), args.model)
